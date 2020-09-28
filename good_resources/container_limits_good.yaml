@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kuard-deployment
+  namespace: production
+  labels:
+    app: kuard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kuard
+  template:
+    metadata:
+      labels:
+        app: kuard
+    spec:
+      containers:
+        - image: acrdwe001.azurecr.io/kuard-amd64:1
+          name: kuard
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            limits:
+              cpu: "200m"
+              memory: "500Mi"

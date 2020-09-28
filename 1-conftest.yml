@@ -1,0 +1,58 @@
+# create a unique name based on your project requirements
+name: $(TeamProject)_$(Build.DefinitionName)_$(SourceBranchName)_$(Date:yyyyMMdd)$(Rev:.r)
+
+schedules:
+- cron: "0 3 * * Mon-Fri"
+  displayName: M-F 3:00 AM (UTC) daily build
+  branches:
+    include:
+    - master
+    - /feature/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: Bash@3
+  displayName: Install conftest
+  inputs:
+    targetType: 'inline'
+    script: |
+      wget https://github.com/open-policy-agent/conftest/releases/download/v0.20.0/conftest_0.20.0_linux_amd64.deb
+      sudo dpkg -i conftest_0.20.0_linux_amd64.deb
+- task: Bash@3
+  displayName: Conftest lookup in default folder policy test individual yaml
+  continueOnError: True
+  inputs:
+    targetType: 'inline'
+    script: |
+      conftest test base-valid.yaml
+- task: Bash@3
+  displayName: Conftest from specific policy test individual yaml
+  continueOnError: True
+  inputs:
+    targetType: 'inline'
+    script: |
+      conftest test -p ./conftest_checks/k8s_security_policies.rego base-valid.yaml
+- task: Bash@3
+  displayName: Conftest from specific policy test all yamls in folder and output in table format
+  continueOnError: True
+  inputs:
+    targetType: 'inline'
+    script: |
+      conftest test -p ./conftest_checks/k8s_security_policies.rego ./k8s_manifests/ -o table
+- task: Bash@3
+  displayName: Install kubeval
+  inputs:
+    targetType: 'inline'
+    script: |
+      wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+      tar xf kubeval-linux-amd64.tar.gz
+      sudo cp kubeval /usr/local/bin 
+- task: Bash@3
+  displayName: Validate Kubernetes configuration files
+  continueOnError: True
+  inputs:
+    targetType: 'inline'
+    script: |
+      kubeval --strict ./k8s_manifests/*.yaml
